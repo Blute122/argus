@@ -1,0 +1,17 @@
+[package]
+name = "soc-simulator"
+version = "0.1.0"
+description = "Lab-scale SOC simulator desktop shell"
+authors = ["SOC Simulator"]
+edition = "2021"
+
+[lib]
+name = "soc_simulator_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
