@@ -11,6 +11,7 @@ from backend.api.auth import get_current_user
 from backend.database.connection import get_db
 from backend.models.alert import Alert
 from backend.models.asset import Asset
+from backend.models.vulnerability import Vulnerability
 from backend.models.log import Log
 
 router = APIRouter(prefix="/api/assets", tags=["Assets"])
@@ -37,6 +38,15 @@ class AssetUpdate(BaseModel):
     risk_score: Optional[int] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+
+
+class VulnerabilityCreate(BaseModel):
+    cve_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    severity: str = "medium"
+    cvss_score: Optional[str] = None
+    status: str = "open"
 
 
 @router.get("/")
@@ -80,6 +90,27 @@ def update_asset(asset_id: int, data: AssetUpdate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(asset)
     return _format_asset(asset, db)
+
+
+@router.post("/{asset_id}/vulnerabilities")
+def add_vulnerability(asset_id: int, data: VulnerabilityCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+        
+    vuln = Vulnerability(**data.model_dump(), asset_id=asset_id)
+    db.add(vuln)
+    db.commit()
+    db.refresh(vuln)
+    
+    return {
+        "id": vuln.id,
+        "cve_id": vuln.cve_id,
+        "title": vuln.title,
+        "severity": vuln.severity,
+        "cvss_score": vuln.cvss_score,
+        "status": vuln.status
+    }
 
 
 @router.get("/stats")
@@ -139,6 +170,17 @@ def _format_asset(asset: Asset, db: Session):
     log_count = db.query(func.count(Log.id)).filter(
         (Log.hostname == asset.hostname) | (Log.source_ip == asset.ip_address) | (Log.destination_ip == asset.ip_address)
     ).scalar() or 0
+    
+    vulns = db.query(Vulnerability).filter(Vulnerability.asset_id == asset.id).all()
+    vuln_list = [{
+        "id": v.id,
+        "cve_id": v.cve_id,
+        "title": v.title,
+        "severity": v.severity,
+        "cvss_score": v.cvss_score,
+        "status": v.status
+    } for v in vulns]
+
     return {
         "id": asset.id,
         "hostname": asset.hostname,
@@ -155,4 +197,5 @@ def _format_asset(asset: Asset, db: Session):
         "notes": asset.notes,
         "alert_count": alert_count,
         "log_count": log_count,
+        "vulnerabilities": vuln_list
     }

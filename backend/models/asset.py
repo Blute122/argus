@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, Integer, String, DateTime, Text
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from backend.database.connection import Base
-
 
 class Asset(Base):
     __tablename__ = "assets"
@@ -23,3 +23,5 @@ class Asset(Base):
     last_seen = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     notes = Column(Text, nullable=True)
+
+    vulnerabilities = relationship('Vulnerability', back_populates='asset', cascade='all, delete-orphan')

@@ -2,6 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { createAsset, getAssetStats, getAssets, updateAsset } from '../services/api';
 
+type Vulnerability = {
+  id: number;
+  cve_id?: string;
+  title: string;
+  severity: string;
+  cvss_score?: string;
+  status: string;
+};
+
 type Asset = {
   id: number;
   hostname: string;
@@ -18,6 +27,7 @@ type Asset = {
   alert_count: number;
   log_count: number;
   notes?: string;
+  vulnerabilities?: Vulnerability[];
 };
 
 const emptyForm = {
@@ -44,8 +54,8 @@ export default function AssetsPage() {
 
   const loadAssets = useCallback(() => {
     const params = query ? { query } : undefined;
-    getAssets(params).then((r) => setAssets(r.data)).catch(() => {});
-    getAssetStats().then((r) => setStats(r.data)).catch(() => {});
+    getAssets(params).then((r) => setAssets(r.data)).catch(() => { });
+    getAssetStats().then((r) => setStats(r.data)).catch(() => { });
   }, [query]);
 
   useEffect(() => {
@@ -170,7 +180,10 @@ export default function AssetsPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-xs text-[var(--text-secondary)]">
                   <span>{asset.asset_type}</span><span>{asset.operating_system || 'Unknown OS'}</span>
-                  <span>{asset.owner || 'Unassigned'}</span><span>{asset.alert_count} alerts / {asset.log_count} logs</span>
+                  <span>{asset.owner || 'Unassigned'}</span>
+                  <span className="flex items-center gap-1">
+                    {asset.vulnerabilities && asset.vulnerabilities.length > 0 && <span title="Vulnerabilities Found">⚠️ {asset.vulnerabilities.length}</span>}
+                  </span>
                 </div>
               </div>
             ))}
@@ -194,7 +207,25 @@ export default function AssetsPage() {
                 <label className="text-xs text-[var(--text-muted)] font-mono">INVESTIGATION CONTEXT</label>
                 <p className="text-sm mt-1">{selected.alert_count} related alerts and {selected.log_count} telemetry events.</p>
               </div>
-              <div>
+
+              {selected.vulnerabilities && selected.vulnerabilities.length > 0 && (
+                <div className="mt-4">
+                  <label className="text-xs text-[var(--text-muted)] font-mono mb-2 block">KNOWN VULNERABILITIES</label>
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                    {selected.vulnerabilities.map(v => (
+                      <div key={v.id} className="p-2 rounded border border-[var(--border-color)] bg-[var(--bg-darker)] text-xs">
+                        <div className="flex justify-between mb-1">
+                          <span className={`font-mono font-bold ${v.severity === 'critical' ? 'text-red-500' : v.severity === 'high' ? 'text-orange-400' : 'text-yellow-400'}`}>{v.cve_id || 'Vuln'} - {v.title}</span>
+                          {v.cvss_score && <span className="text-[var(--text-muted)]">CVSS: {v.cvss_score}</span>}
+                        </div>
+                        <span className={`text-[10px] px-1 rounded ${v.status === 'open' ? 'bg-red-900/30 text-red-400' : 'bg-green-900/30 text-green-400'}`}>{v.status.toUpperCase()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4">
                 <label className="text-xs text-[var(--text-muted)] font-mono mb-2 block">CONTAINMENT</label>
                 <div className="flex flex-wrap gap-2">
                   {['online', 'degraded', 'isolated', 'offline'].map((status) => (
