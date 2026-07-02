@@ -321,10 +321,11 @@ class AptKillchainRule(CorrelationRule):
 class CorrelationEngine:
     """Runs all correlation rules against incoming log events."""
     def __init__(self):
+        # Single-event detections moved to Sigma YAML rules (backend/detection/
+        # rules/) and the scheduled brute-force threshold rule. Only genuinely
+        # stateful multi-event correlation remains here to avoid duplicate alerts.
         self.rules = [
-            BruteForceRule(), PowerShellObfuscationRule(), C2CommunicationRule(),
-            LateralMovementRule(), PortScanRule(), DnsExfiltrationRule(),
-            PhishingRule(), PrivilegeEscalationRule(), AptKillchainRule(), # <- Added here
+            AptKillchainRule(),
         ]
         self.context = defaultdict(int)
 

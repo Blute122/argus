@@ -1,0 +1,15 @@
+title: Port Scan Detected
+id: soc-port-scan
+status: stable
+description: Potential reconnaissance activity against internal assets
+level: medium
+logsource:
+  category: network
+detection:
+  selection:
+    event_type: port_scan
+  condition: selection
+tags:
+  - attack.discovery
+  - attack.t1046
+recommended_action: Identify the scanning source, validate whether authorized, check for follow-on exploitation.

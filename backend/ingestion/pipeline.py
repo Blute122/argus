@@ -12,14 +12,16 @@ broadcasting behavior, and the demo loop is no longer special-cased.
 from backend.config import settings
 from backend.correlation_engine.rules import CorrelationEngine
 from backend.database.connection import SessionLocal
+from backend.detection.engine import detection_engine
 from backend.ingestion.enrichment import enrich
 from backend.models.alert import Alert
 from backend.search import get_log_store
 from backend.utils.records import coerce_datetime_fields
 from backend.websocket.manager import manager
 
-# Single correlation engine instance shared across all ingestion sources so its
-# stateful rules (brute force, APT killchain, ...) see the full event stream.
+# Stateful multi-event correlation (e.g. the APT killchain) stays in the
+# correlation engine; single-event detections are Sigma YAML rules run by the
+# detection engine. Both see every event.
 correlation_engine = CorrelationEngine()
 
 
@@ -34,7 +36,7 @@ async def ingest_event(log_data: dict, ingest_source: str = "demo", tenant_id: s
 
     await manager.broadcast_log({**log_data, "id": log_id})
 
-    generated = correlation_engine.process_log(log_data)
+    generated = correlation_engine.process_log(log_data) + detection_engine.evaluate(log_data)
     if generated:
         db = SessionLocal()
         try:

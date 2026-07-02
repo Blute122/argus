@@ -1,0 +1,19 @@
+title: DNS Exfiltration Suspected
+id: soc-dns-exfil
+status: experimental
+description: DNS tunneling or exfiltration-like traffic identified
+level: critical
+logsource:
+  category: dns
+detection:
+  selection:
+    event_type: dns_query
+  indicators:
+    - dns_query|contains: exfil
+    - raw_log|contains: exfiltration
+    - raw_log|contains: tunneling
+  condition: selection and indicators
+tags:
+  - attack.exfiltration
+  - attack.t1048
+recommended_action: Block the DNS channel, preserve packet evidence, identify data scope, contain the source host.

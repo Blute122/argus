@@ -87,6 +87,38 @@ New lines are followed and ingested.
 Custom formats: add a parser under `backend/ingestion/parsers/` and
 `register("mytype", parse)`.
 
+## Detection rules
+
+Detections are **Sigma-style YAML rules** in `backend/detection/rules/`, evaluated
+two ways:
+- **streaming** — matched against every event as it's ingested (in-process, works
+  on any store)
+- **scheduled** — `type: threshold` rules run every 30s over a time window (e.g.
+  "5+ failed logins from one IP in 5 min")
+
+Manage them in the **Detection Rules** page (enable/disable, view YAML, test
+against recent logs) or via the API (`/api/detection/rules`). Toggling requires
+the `admin` or `threat_hunter` role.
+
+Add your own rule by dropping a `.yml` file in the rules directory:
+
+```yaml
+title: Suspicious PowerShell Execution
+id: my-powershell-rule
+level: critical
+detection:
+  selection:
+    event_type: powershell_execution
+    command_line|contains: ['-enc', 'frombase64']
+  condition: selection
+tags: [attack.execution, attack.t1059.001]
+recommended_action: Isolate host, review parent process tree.
+```
+
+The matcher supports the common Sigma constructs (field modifiers, list-OR,
+`condition` with `and/or/not`, `all of`/`1 of them`), so many public SigmaHQ
+rules work with little or no change.
+
 ## Configuration
 
 All settings live in [backend/config.py](backend/config.py) and are read from

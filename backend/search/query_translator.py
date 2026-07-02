@@ -70,12 +70,18 @@ def build_query(query_str: str) -> dict:
     if len(clauses) == 1:
         return clauses[0]
 
-    # If every operator is OR, use should; otherwise treat as AND (must). This
-    # mirrors the left-to-right precedence of the legacy SQL parser closely
-    # enough for practical hunts.
-    if operators and all(op == "OR" for op in operators):
-        return {"bool": {"should": clauses, "minimum_should_match": 1}}
-    return {"bool": {"must": clauses}}
+    # Fold left-to-right, applying each operator as encountered (implicit AND
+    # when no operator token precedes a clause). This matches the associativity
+    # of the legacy SQL parser exactly, so mixed queries like
+    # "a=1 OR b=2 earliest=-5m" become ((a OR b) AND time).
+    expression = clauses[0]
+    for index, clause in enumerate(clauses[1:]):
+        op = operators[index] if index < len(operators) else "AND"
+        if op == "OR":
+            expression = {"bool": {"should": [expression, clause], "minimum_should_match": 1}}
+        else:
+            expression = {"bool": {"must": [expression, clause]}}
+    return expression
 
 
 def _tokenize(query_str: str) -> list[str]:

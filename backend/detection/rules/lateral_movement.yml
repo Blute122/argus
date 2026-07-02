@@ -1,0 +1,15 @@
+title: Lateral Movement Detected
+id: soc-lateral-movement
+status: stable
+description: Suspicious internal host-to-host remote access
+level: high
+logsource:
+  category: network
+detection:
+  selection:
+    event_type: lateral_movement
+  condition: selection
+tags:
+  - attack.lateral_movement
+  - attack.t1021
+recommended_action: Verify authorized access, check source credentials, trace the movement chain.

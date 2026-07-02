@@ -1,0 +1,24 @@
+title: Suspicious PowerShell Execution
+id: soc-powershell-obfuscation
+status: stable
+description: PowerShell executed with an encoded or obfuscated command
+level: critical
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    event_type: powershell_execution
+    command_line|contains:
+      - '-enc'
+      - 'iex'
+      - 'downloadstring'
+      - 'bypass'
+      - 'hidden'
+      - 'invoke-expression'
+      - 'frombase64'
+  condition: selection
+tags:
+  - attack.execution
+  - attack.t1059.001
+recommended_action: Isolate host, collect memory dump, review parent process tree, check for persistence.

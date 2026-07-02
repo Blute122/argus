@@ -1,0 +1,15 @@
+title: Brute Force Login Attempts
+id: soc-brute-force
+type: threshold
+status: stable
+description: Many failed logins from a single source in a short window
+level: high
+threshold:
+  query: event_type=failed_login OR event_type=ssh_failed_login
+  group_by: source_ip
+  count: 5
+  window_minutes: 5
+tags:
+  - attack.credential_access
+  - attack.t1110
+recommended_action: Block the source IP, force password reset on targeted accounts, investigate active sessions.

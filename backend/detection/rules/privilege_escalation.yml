@@ -1,0 +1,17 @@
+title: Privilege Escalation Attempt
+id: soc-privilege-escalation
+status: stable
+description: Suspicious privilege elevation detected
+level: high
+logsource:
+  category: process_creation
+detection:
+  selection:
+    event_type:
+      - privilege_escalation
+      - sudo_execution
+  condition: selection
+tags:
+  - attack.privilege_escalation
+  - attack.t1548
+recommended_action: Review the escalation chain, audit sudo/UAC config, check for persistence.

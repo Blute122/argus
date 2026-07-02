@@ -1,0 +1,18 @@
+title: Phishing Email Detected
+id: soc-phishing
+status: stable
+description: Suspected phishing email with spoofed sender or malicious content
+level: high
+logsource:
+  category: email
+detection:
+  selection:
+    event_type:
+      - phishing_attempt
+      - malicious_attachment
+      - email_spoofing
+  condition: selection
+tags:
+  - attack.initial_access
+  - attack.t1566
+recommended_action: Quarantine the email, scan attachments, notify affected users, check for credential compromise.

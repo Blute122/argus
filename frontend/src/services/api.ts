@@ -137,6 +137,13 @@ export const startCampaign = (id: string) => api.post(`/simulations/campaigns/st
 export const runNextCampaignStage = (id: number) => api.post(`/simulations/campaigns/runs/${id}/next`);
 export const autorunCampaign = (id: number) => api.post(`/simulations/campaigns/runs/${id}/autorun`);
 
+// Detection rules
+export const getDetectionRules = () => api.get('/detection/rules');
+export const getDetectionRule = (id: string) => api.get(`/detection/rules/${id}`);
+export const enableDetectionRule = (id: string) => api.post(`/detection/rules/${id}/enable`);
+export const disableDetectionRule = (id: string) => api.post(`/detection/rules/${id}/disable`);
+export const testDetectionRule = (id: string) => api.post(`/detection/rules/${id}/test`);
+
 // MITRE
 export const getMitreTactics = () => api.get('/mitre/tactics');
 export const getMitreTechniques = () => api.get('/mitre/techniques');

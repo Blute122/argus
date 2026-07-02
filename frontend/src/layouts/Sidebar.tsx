@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { path: '/assets', label: 'Assets', icon: 'AS' },
   { path: '/logs', label: 'Log Stream', icon: 'LG' },
   { path: '/hunting', label: 'Threat Hunt', icon: 'TH' },
+  { path: '/rules', label: 'Detection Rules', icon: 'DR' },
   { path: '/simulations', label: 'Attack Sim', icon: 'SIM' },
   { path: '/mitre', label: 'MITRE ATT&CK', icon: 'MT' },
   { path: '/reports', label: 'Reports', icon: 'RP' },

@@ -46,7 +46,7 @@ def get_db():
 
 def init_db():
     """Create all tables on startup, then apply additive column migrations."""
-    from backend.models import user, log, alert, incident, hunt_query, attack_simulation, asset, ingest_key  # noqa: F401
+    from backend.models import user, log, alert, incident, hunt_query, attack_simulation, asset, ingest_key, detection_rule  # noqa: F401
     Base.metadata.create_all(bind=engine)
     _apply_additive_migrations()
 

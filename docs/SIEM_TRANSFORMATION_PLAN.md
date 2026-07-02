@@ -168,7 +168,10 @@ Each phase lists: goal · new/changed files · migration steps · how to verify 
 
 ---
 
-### Phase 3 — Real detection engine (Sigma)
+### Phase 3 — Real detection engine (Sigma) — ✅ IMPLEMENTED
+
+> Delivered: `backend/detection/` — `sigma.py` (native Sigma-subset matcher: selections, `|contains/startswith/endswith/re/gt/gte/lt/lte`, list-OR / `|all`-AND, boolean `condition` with `and/or/not/()` + `all of`/`1 of them`/`prefix*`), `threshold.py` (scheduled aggregation rules via `store.hunt`), `loader.py`, `engine.py` (loads YAML, syncs `detection_rules` table preserving enable/stats, evaluates streaming rules), `scheduler.py` (30s threshold runner with dedup). Starter pack in `rules/`: 8 streaming Sigma rules + 1 brute-force threshold rule (ported from the old correlation rules). New `models/detection_rule.py`, `api/rules.py` (list/detail-with-YAML/enable/disable/test; manage = admin/threat_hunter). Pipeline runs Sigma engine alongside a trimmed `CorrelationEngine` (now only the stateful APT killchain, to avoid duplicate alerts). Frontend `RulesPage.tsx` + nav + API. Also fixed the Phase 1 query translator to fold AND/OR left-to-right (needed for mixed threshold queries). Verified: streaming fires once (no dup), brute-force threshold fires, rules API + enable/disable/test all green; frontend typechecks.
+> **Deviation:** implemented a **native Sigma-subset evaluator** rather than `pySigma` + `pysigma-backend-opensearch`. Reason: streaming evaluation runs on the event dict in-process, so detection works identically on **both** the OpenSearch and SQLite stores, with no heavy dependency and full local testability. Threshold rules query via the store's existing hunt (store-agnostic). Full pySigma/OpenSearch-native compilation can be added later for very high event volumes.
 
 **Goal:** Detections become versioned rule content, not hardcoded Python — and run against real ingested logs.
 

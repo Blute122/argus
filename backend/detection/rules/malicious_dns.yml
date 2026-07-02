@@ -1,0 +1,16 @@
+title: Malicious DNS Resolution
+id: soc-malicious-dns
+status: stable
+description: DNS query to a known-malicious domain
+level: high
+logsource:
+  category: dns
+detection:
+  selection:
+    event_type: dns_query
+    is_malicious|gte: 2
+  condition: selection
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+recommended_action: Investigate DNS query, check for follow-up connections, block the domain.

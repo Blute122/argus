@@ -20,7 +20,9 @@ from backend.log_generators.linux import generate_linux_log
 from backend.log_generators.network import generate_network_log
 from backend.log_generators.email_gen import generate_email_log
 from backend.log_generators.cloud import generate_cloud_log
-from backend.api import auth, alerts, incidents, logs, simulations, mitre, assets, reports
+from backend.api import auth, alerts, incidents, logs, simulations, mitre, assets, reports, rules
+from backend.detection.engine import detection_engine
+from backend.detection.scheduler import scheduler as detection_scheduler
 from backend.ingestion import http_ingest
 from backend.ingestion.pipeline import ingest_event
 from backend.search import get_log_store
@@ -122,6 +124,10 @@ async def lifespan(app: FastAPI):
         from backend.ingestion.bootstrap import ensure_default_ingest_key
         ensure_default_ingest_key()
 
+    # Load detection rules and start the scheduled (threshold) runner.
+    detection_engine.load()
+    await detection_scheduler.start()
+
     # Real ingestion listeners (opt-in via config).
     syslog_listeners = None
     file_tailer = None
@@ -147,6 +153,7 @@ async def lifespan(app: FastAPI):
     _running = False
     if task:
         task.cancel()
+    await detection_scheduler.stop()
     if syslog_listeners:
         await syslog_listeners.stop()
     if file_tailer:
@@ -180,6 +187,7 @@ app.include_router(simulations.router)
 app.include_router(mitre.router)
 app.include_router(assets.router)
 app.include_router(reports.router)
+app.include_router(rules.router)
 if settings.ingest_enabled:
     app.include_router(http_ingest.router)
 

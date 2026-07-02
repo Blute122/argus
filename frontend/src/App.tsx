@@ -11,6 +11,7 @@ import SimulationsPage from './pages/SimulationsPage';
 import MitrePage from './pages/MitrePage';
 import AssetsPage from './pages/AssetsPage';
 import ReportsPage from './pages/ReportsPage';
+import RulesPage from './pages/RulesPage';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/logs" element={<LogStreamPage />} />
             <Route path="/hunting" element={<HuntingPage />} />
+            <Route path="/rules" element={<RulesPage />} />
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/assets" element={<AssetsPage />} />
             <Route path="/simulations" element={<SimulationsPage />} />

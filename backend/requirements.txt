@@ -14,3 +14,5 @@ httpx>=0.27.0
 # Log store + relational backend (Phase 1 SIEM transformation)
 opensearch-py>=2.6.0
 psycopg2-binary>=2.9.9
+# Detection engine (Phase 3): Sigma YAML rules
+pyyaml>=6.0
