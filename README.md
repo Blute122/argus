@@ -1,8 +1,12 @@
 # SOC Platform
 
-A Security Operations Center dashboard: live log stream, correlation-based
-alerting, threat hunting (SPL-like syntax), incident response workflow, asset
-inventory, MITRE ATT&CK mapping, and attack simulation.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/Blute122/soc/actions/workflows/ci.yml/badge.svg)](https://github.com/Blute122/soc/actions/workflows/ci.yml)
+
+A self-hostable Security Operations Center / SIEM: live log stream, real log
+ingestion, Sigma-style detection rules, correlation-based alerting, threat
+hunting (SPL-like syntax), incident response workflow, asset inventory, MITRE
+ATT&CK mapping, and attack simulation.
 
 It runs in two modes:
 
@@ -32,27 +36,31 @@ npm run dev
 Defaults: `OPENSEARCH_ENABLED=false`, `DATABASE_URL=sqlite`, `DEMO_MODE=true`.
 Copy `.env.example` to `.env` to override.
 
-## Real-SIEM mode (OpenSearch + Postgres)
+## Full stack with Docker (OpenSearch + Postgres + backend + frontend)
 
-1. Start infrastructure:
-   ```bash
-   docker compose up -d          # OpenSearch :9200, Dashboards :5601, Postgres :5432
-   ```
-2. Configure `backend/.env` (or project-root `.env`):
-   ```env
-   OPENSEARCH_ENABLED=true
-   OPENSEARCH_URL=https://localhost:9200
-   OPENSEARCH_PASSWORD=Soc!Secur3Pass
-   DATABASE_URL=postgresql+psycopg2://soc:soc@localhost:5432/soc
-   DEMO_MODE=true          # keep the generator; set false once real ingestion is wired
-   ```
-3. (Optional) migrate existing SQLite metadata into Postgres:
-   ```bash
-   python -m backend.scripts.migrate_sqlite_to_pg
-   # add --include-logs to also reindex old logs into OpenSearch
-   ```
-4. Start the backend as above. On boot it installs the OpenSearch index template
-   and begins writing logs to time-based `logs-YYYY.MM.DD` indices.
+One command builds and runs everything:
+
+```bash
+docker compose up --build
+```
+
+Then open the dashboard at **http://localhost:8080**. Services:
+OpenSearch `:9200`, Dashboards `:5601`, Postgres `:5432`, API `:8000`, UI `:8080`.
+
+- Logs are stored in OpenSearch (time-based `logs-YYYY.MM.DD` indices); metadata
+  in Postgres. The JWT secret auto-generates into a mounted volume.
+- `DEMO_MODE=true` (the compose default) ships sample data + training logins
+  (`admin` / `admin123`). Set `DEMO_MODE=false` in `docker-compose.yml` for a
+  real deployment — an **admin password is generated and printed once** in the
+  backend logs, and the sample accounts/assets are not created.
+- Change the default OpenSearch/Postgres credentials before exposing the stack.
+
+To run the backend against these services **without** containerizing it, set in
+`backend/.env`: `OPENSEARCH_ENABLED=true`, `OPENSEARCH_PASSWORD=Soc!Secur3Pass`,
+`DATABASE_URL=postgresql+psycopg2://soc:soc@localhost:5432/soc`, then start
+uvicorn. To move existing SQLite metadata over:
+`python -m backend.scripts.migrate_sqlite_to_pg` (`--include-logs` also reindexes
+old logs into OpenSearch).
 
 ## Sending real logs (ingestion)
 
@@ -141,6 +149,14 @@ environment / `.env`. See [.env.example](.env.example) for the full list.
 Logs (high-volume, append-only) live in the **log store** (OpenSearch, or SQLite
 in demo mode) behind a common interface in
 [backend/search/](backend/search/). Metadata (users, incidents, alerts, assets,
-saved hunts) lives in the **relational DB**. See the transformation plan for the
-full roadmap: real ingestion (syslog/HTTP/file), a Sigma detection engine,
-retention policies, and production hardening.
+saved hunts) lives in the **relational DB**. Ingestion, detection, and hardening
+live in [backend/ingestion/](backend/ingestion/),
+[backend/detection/](backend/detection/), and the auth/audit layer. See
+[docs/SIEM_TRANSFORMATION_PLAN.md](docs/SIEM_TRANSFORMATION_PLAN.md) for the full
+design.
+
+## Contributing & security
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). To report a
+vulnerability, follow [SECURITY.md](SECURITY.md) (please don't open a public
+issue). Licensed under [MIT](LICENSE).

@@ -62,9 +62,13 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # --- Auth / security (Phase 4) ---
-    # JWT signing secret. MUST be overridden in any non-local deployment.
+    # JWT signing secret. If left at the default, a random secret is generated
+    # and persisted to data/.jwt_secret on first run (see get_settings).
     jwt_secret: str = "soc-simulator-dev-secret-change-me"
     jwt_expire_minutes: int = 480
+    # First-run admin password when DEMO_MODE is off. If empty, a random one is
+    # generated and printed once. Demo mode keeps the sample training accounts.
+    admin_password: str = ""
     # Login rate limit (attempts per IP per window).
     login_rate_limit: int = 10
     login_rate_window_seconds: int = 60
@@ -80,9 +84,44 @@ class Settings(BaseSettings):
     log_retention_days: int = 90
 
 
+def _persistent_jwt_secret() -> str:
+    """Load a persisted random JWT secret, generating one on first run.
+
+    Lets a self-hosted instance start securely with zero config: instead of
+    signing tokens with the well-known default, we mint a random secret once
+    and reuse it across restarts. Set JWT_SECRET in the env to override.
+    """
+    import os
+    import secrets
+    from pathlib import Path
+
+    path = Path(os.getenv("JWT_SECRET_FILE", "data/.jwt_secret"))
+    try:
+        if path.exists():
+            value = path.read_text(encoding="utf-8").strip()
+            if value:
+                return value
+        path.parent.mkdir(parents=True, exist_ok=True)
+        value = secrets.token_urlsafe(48)
+        path.write_text(value, encoding="utf-8")
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+        print(f"[SOC] Generated a persistent JWT secret at {path}")
+        return value
+    except OSError:
+        # Read-only FS: fall back to an ephemeral random secret (sessions won't
+        # survive a restart, but tokens are never signed with the default).
+        return secrets.token_urlsafe(48)
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if s.jwt_secret_is_default():
+        s.jwt_secret = _persistent_jwt_secret()
+    return s
 
 
 settings = get_settings()

@@ -1,0 +1,29 @@
+# Python
+**/__pycache__/
+**/*.py[cod]
+backend/venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend build
+frontend/node_modules/
+frontend/dist/
+
+# Local runtime data & secrets
+*.db
+*.sqlite
+*.sqlite3
+data/
+.jwt_secret
+.env
+.env.*
+
+# Git / editor / OS
+.git/
+.github/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

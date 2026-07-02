@@ -13,6 +13,8 @@ backend/venv/
 *.sqlite
 *.sqlite3
 soc_simulator.db
+data/
+.jwt_secret
 
 # Secrets and local config
 .env

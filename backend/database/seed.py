@@ -1,14 +1,43 @@
-"""Database seeding - creates default admin user and sample data."""
+"""Database seeding.
+
+In DEMO_MODE, seeds the full training account set + sample assets. Otherwise
+(real deployment) seeds only an admin account, whose password comes from
+ADMIN_PASSWORD or is randomly generated and printed once.
+"""
+import secrets
+
+from backend.config import settings
 from backend.database.connection import SessionLocal
 from backend.models.asset import Asset
 from backend.models.vulnerability import Vulnerability
 from backend.models.user import User, UserRole
 from backend.security import hash_password
 
+
+def _seed_admin_only(db):
+    password = settings.admin_password or secrets.token_urlsafe(12)
+    db.add(User(username="admin", email="admin@localhost",
+                password_hash=hash_password(password),
+                full_name="SOC Administrator", role=UserRole.ADMIN))
+    db.commit()
+    if settings.admin_password:
+        print("[SEED] Admin account created (password from ADMIN_PASSWORD).")
+    else:
+        print("=" * 68)
+        print("[SEED] Created admin account (shown once — store it now):")
+        print(f"       username: admin   password: {password}")
+        print("=" * 68)
+
+
 def seed_database():
     """Create default users if they don't exist."""
     db = SessionLocal()
     try:
+        if not settings.demo_mode:
+            if db.query(User).count() == 0:
+                _seed_admin_only(db)
+            return
+
         if db.query(User).count() == 0:
             users = [
                 User(username="admin", email="admin@soc-lab.local",

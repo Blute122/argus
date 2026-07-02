@@ -227,7 +227,9 @@ Each phase lists: goal · new/changed files · migration steps · how to verify 
 
 ---
 
-### Phase 5 — Open-source packaging & release
+### Phase 5 — Open-source packaging & release — ✅ IMPLEMENTED
+
+> Delivered: `LICENSE` (MIT), `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`; GitHub Actions CI (`.github/workflows/ci.yml`) running backend import + `pytest backend/tests` and the frontend build; `backend/Dockerfile` + `frontend/Dockerfile` (+ `frontend/nginx.conf` proxying `/api` and `/ws`) so `docker compose up --build` runs the whole stack (UI on `:8080`); `.dockerignore`; secure first-run defaults — auto-generated persisted JWT secret and, when `DEMO_MODE=false`, an admin-only seed with a generated/`ADMIN_PASSWORD` password (demo accounts + sample assets gated to demo mode); README badges + full-stack instructions. Verified: 7 smoke tests pass, backend imports, frontend builds.
 
 **Goal:** Make it something a stranger can deploy in minutes and trust. This is the "wrapper" the self-host model needs; the SIEM engine itself is Phases 1–4.
 

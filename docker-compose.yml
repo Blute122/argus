@@ -65,6 +65,43 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: soc-backend
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://soc:soc@postgres:5432/soc
+      - OPENSEARCH_ENABLED=true
+      - OPENSEARCH_URL=https://opensearch:9200
+      - OPENSEARCH_PASSWORD=Soc!Secur3Pass
+      # DEMO_MODE=true ships sample data + training logins. Set false for a real
+      # deployment (an admin password is then generated and printed once).
+      - DEMO_MODE=true
+      # JWT secret auto-generates into the mounted volume; override for prod.
+      # - JWT_SECRET=change-me
+      - CORS_ORIGINS=*
+    volumes:
+      - backend-data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: soc-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
 volumes:
   opensearch-data:
   postgres-data:
+  backend-data:
