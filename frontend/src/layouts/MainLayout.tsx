@@ -3,7 +3,17 @@ import { useAuth } from '../store/AuthContext';
 import Sidebar from './Sidebar';
 
 export default function MainLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-primary)]">
+        <div className="rounded border border-[var(--border-color)] bg-[var(--bg-secondary)] px-5 py-4 font-mono text-xs uppercase tracking-wider text-[var(--accent-cyan)] shadow-lg shadow-cyan-950/20">
+          Validating session...
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

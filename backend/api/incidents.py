@@ -50,6 +50,15 @@ def get_incidents(status: Optional[str] = None, db: Session = Depends(get_db), _
     return [_format_incident(i) for i in incidents]
 
 
+@router.get("/stats")
+def get_incident_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    from sqlalchemy import func
+    total = db.query(func.count(Incident.id)).scalar()
+    by_status = dict(db.query(Incident.status, func.count(Incident.id)).group_by(Incident.status).all())
+    by_severity = dict(db.query(Incident.severity, func.count(Incident.id)).group_by(Incident.severity).all())
+    return {"total": total, "by_status": by_status, "by_severity": by_severity}
+
+
 @router.get("/{incident_id}")
 def get_incident_detail(incident_id: int, db: Session = Depends(get_db), _user=Depends(get_current_user)):
     incident = db.query(Incident).filter(Incident.id == incident_id).first()
@@ -204,15 +213,6 @@ def enrich_incident(incident_id: int, db: Session = Depends(get_db), _user=Depen
 
     db.commit()
     return {"message": "Enrichment complete", "ips_checked": len(ips_to_check), "evidence_added": evidence_added, "findings": results}
-
-
-@router.get("/stats")
-def get_incident_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    from sqlalchemy import func
-    total = db.query(func.count(Incident.id)).scalar()
-    by_status = dict(db.query(Incident.status, func.count(Incident.id)).group_by(Incident.status).all())
-    by_severity = dict(db.query(Incident.severity, func.count(Incident.id)).group_by(Incident.severity).all())
-    return {"total": total, "by_status": by_status, "by_severity": by_severity}
 
 
 def _format_incident(i):

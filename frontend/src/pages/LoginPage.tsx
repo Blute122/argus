@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
-import { login as loginApi } from '../services/api';
+import { cancelProtectedRequests, login as loginApi, setAuthToken } from '../services/api';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -11,10 +11,21 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    cancelProtectedRequests();
+    localStorage.removeItem('soc_token');
+    localStorage.removeItem('soc_user');
+    setAuthToken(null);
+    window.dispatchEvent(new Event('soc:logout'));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    cancelProtectedRequests();
+    localStorage.removeItem('soc_token');
+    localStorage.removeItem('soc_user');
     try {
       const res = await loginApi(username, password);
       login(res.data.access_token, res.data.user);

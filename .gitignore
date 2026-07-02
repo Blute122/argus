@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+backend/venv/
 
 # Local runtime data
 *.db

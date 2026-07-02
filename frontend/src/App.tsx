@@ -10,6 +10,7 @@ import IncidentsPage from './pages/IncidentsPage';
 import SimulationsPage from './pages/SimulationsPage';
 import MitrePage from './pages/MitrePage';
 import AssetsPage from './pages/AssetsPage';
+import ReportsPage from './pages/ReportsPage';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/assets" element={<AssetsPage />} />
             <Route path="/simulations" element={<SimulationsPage />} />
             <Route path="/mitre" element={<MitrePage />} />
+            <Route path="/reports" element={<ReportsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
