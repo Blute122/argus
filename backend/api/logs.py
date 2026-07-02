@@ -1,16 +1,40 @@
 """Logs API and threat hunting query endpoints."""
-from fastapi import APIRouter, Depends, Query
+import json
+from datetime import datetime, timezone, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, or_, and_
+from sqlalchemy import desc
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 from backend.database.connection import get_db
-from backend.models.log import Log
+from backend.models.incident import Incident, IncidentNote
 from backend.models.hunt_query import HuntQuery
 from backend.models.user import User
 from backend.api.auth import get_current_user
+from backend.search import get_log_store
 
 router = APIRouter(prefix="/api", tags=["Logs & Hunting"])
+
+SLA_HOURS = {"critical": 4, "high": 8, "medium": 24, "low": 72}
+
+
+# Log ids are ints (SQL fallback) or strings (OpenSearch doc ids).
+LogId = Union[int, str]
+
+
+class HuntIncidentCreate(BaseModel):
+    query: str
+    log_ids: list[LogId]
+    title: str
+    severity: str = "medium"
+    category: str = "threat_hunt"
+    description: Optional[str] = None
+
+
+class HuntAttachRequest(BaseModel):
+    query: str
+    log_ids: list[LogId]
 
 
 @router.get("/logs")
@@ -18,36 +42,99 @@ def get_logs(
     source: Optional[str] = None, event_type: Optional[str] = None,
     severity: Optional[str] = None, limit: int = Query(default=100, le=1000),
     offset: int = 0,
-    db: Session = Depends(get_db), _user=Depends(get_current_user),
+    _user=Depends(get_current_user),
 ):
-    q = db.query(Log).order_by(desc(Log.timestamp))
-    if source:
-        q = q.filter(Log.source == source)
-    if event_type:
-        q = q.filter(Log.event_type == event_type)
-    if severity:
-        q = q.filter(Log.severity == severity)
-    logs = q.offset(offset).limit(limit).all()
-    return [_fmt_log(l) for l in logs]
+    return get_log_store().search_logs(
+        source=source, event_type=event_type, severity=severity, limit=limit, offset=offset
+    )
 
 
 @router.get("/logs/stats")
-def get_log_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    total = db.query(func.count(Log.id)).scalar()
-    by_source = dict(db.query(Log.source, func.count(Log.id)).group_by(Log.source).all())
-    by_severity = dict(db.query(Log.severity, func.count(Log.id)).group_by(Log.severity).all())
-    return {"total": total, "by_source": by_source, "by_severity": by_severity}
+def get_log_stats(_user=Depends(get_current_user)):
+    return get_log_store().log_stats()
 
 
 @router.post("/hunt")
 def run_hunt_query(query: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Parse a Splunk-like query and search logs."""
-    results = _parse_and_search(query, db)
+    """Parse an advanced SPL/KQL-like query and search logs."""
+    formatted = get_log_store().hunt(query, limit=500)
+
     # Save query history
-    hq = HuntQuery(name=f"Hunt: {query[:50]}", query=query, created_by=user.id, results_count=len(results))
+    hq = HuntQuery(name=f"Hunt: {query[:50]}", query=query, created_by=user.id, results_count=len(formatted))
     db.add(hq)
     db.commit()
-    return {"query": query, "results_count": len(results), "results": results[:200]}
+
+    return {
+        "query": query,
+        "results_count": len(formatted),
+        "results": formatted[:200],
+        "fields": ["source", "event_id", "event_type", "severity", "hostname", "username", "process_name", "source_ip", "destination_ip", "destination_port", "mitre_technique", "dns_query"],
+        "syntax": ["AND", "OR", "NOT", "* wildcard", "earliest=-24h", "latest=YYYY-MM-DDTHH:MM:SS"],
+    }
+
+
+@router.post("/hunt/create-incident")
+def create_incident_from_hunt(data: HuntIncidentCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    logs = _get_selected_logs(data.log_ids)
+    if not logs:
+        raise HTTPException(status_code=400, detail="No matching logs selected")
+
+    assets = sorted({value for log in logs for value in [log.hostname, log.source_ip, log.destination_ip] if value})
+    mitre = sorted({log.mitre_technique for log in logs if log.mitre_technique})
+    iocs = sorted({value for log in logs for value in [log.source_ip, log.destination_ip, log.dns_query, log.url] if value})
+    evidence = [_log_evidence(log, data.query) for log in logs]
+
+    incident = Incident(
+        title=data.title,
+        description=data.description or f"Threat hunt escalation from query: {data.query}",
+        severity=data.severity,
+        category=data.category,
+        assigned_to=user.id,
+        created_by=user.id,
+        sla_deadline=datetime.now(timezone.utc) + timedelta(hours=SLA_HOURS.get(data.severity, 24)),
+        evidence=json.dumps(evidence),
+        affected_assets=json.dumps(assets),
+        mitre_techniques=json.dumps(mitre),
+        ioc_list=json.dumps(iocs),
+        alert_count=0,
+    )
+    db.add(incident)
+    db.flush()
+    db.add(IncidentNote(
+        incident_id=incident.id,
+        author_id=user.id,
+        note_type="timeline",
+        content=f"Incident created from threat hunt query: {data.query}",
+    ))
+    db.commit()
+    db.refresh(incident)
+    return {"message": "Incident created from hunt", "incident_id": incident.id, "logs_attached": len(logs)}
+
+
+@router.post("/hunt/attach-incident/{incident_id}")
+def attach_hunt_to_incident(incident_id: int, data: HuntAttachRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    logs = _get_selected_logs(data.log_ids)
+    if not logs:
+        raise HTTPException(status_code=400, detail="No matching logs selected")
+
+    evidence = _json_list(incident.evidence)
+    evidence.extend(_log_evidence(log, data.query) for log in logs)
+    incident.evidence = json.dumps(evidence)
+
+    incident.affected_assets = json.dumps(sorted(set(_json_list(incident.affected_assets)) | {value for log in logs for value in [log.hostname, log.source_ip, log.destination_ip] if value}))
+    incident.mitre_techniques = json.dumps(sorted(set(_json_list(incident.mitre_techniques)) | {log.mitre_technique for log in logs if log.mitre_technique}))
+    incident.ioc_list = json.dumps(sorted(set(_json_list(incident.ioc_list)) | {value for log in logs for value in [log.source_ip, log.destination_ip, log.dns_query, log.url] if value}))
+    db.add(IncidentNote(
+        incident_id=incident_id,
+        author_id=user.id,
+        note_type="evidence",
+        content=f"Attached {len(logs)} hunt result logs from query: {data.query}",
+    ))
+    db.commit()
+    return {"message": "Hunt results attached", "incident_id": incident_id, "logs_attached": len(logs)}
 
 
 @router.get("/hunts/history")
@@ -72,56 +159,35 @@ def save_hunt(hunt_id: int, db: Session = Depends(get_db), _user=Depends(get_cur
     return {"message": "Hunt saved"}
 
 
-def _parse_and_search(query: str, db: Session) -> list:
-    """Simple Splunk-like query parser: source=windows eventid=4625 etc."""
-    q = db.query(Log).order_by(desc(Log.timestamp))
-    parts = query.strip().split()
-    for part in parts:
-        if "=" in part:
-            field, value = part.split("=", 1)
-            field = field.lower().strip()
-            value = value.strip().strip('"').strip("'")
-            if field == "source":
-                q = q.filter(Log.source == value)
-            elif field in ("eventid", "event_id"):
-                q = q.filter(Log.event_id == value)
-            elif field == "event_type":
-                q = q.filter(Log.event_type == value)
-            elif field == "severity":
-                q = q.filter(Log.severity == value)
-            elif field in ("source_ip", "src_ip"):
-                q = q.filter(Log.source_ip == value)
-            elif field in ("dest_ip", "destination_ip", "dst_ip"):
-                q = q.filter(Log.destination_ip == value)
-            elif field in ("hostname", "host"):
-                q = q.filter(Log.hostname == value)
-            elif field in ("username", "user"):
-                q = q.filter(Log.username == value)
-            elif field in ("process_name", "process"):
-                q = q.filter(Log.process_name.ilike(f"%{value}%"))
-            elif field in ("destination_port", "dest_port", "port"):
-                q = q.filter(Log.destination_port == int(value))
-            elif field in ("command_line", "cmd"):
-                q = q.filter(Log.command_line.ilike(f"%{value}%"))
-            elif field in ("dns_query", "dns"):
-                q = q.filter(Log.dns_query.ilike(f"%{value}%"))
-            elif field in ("mitre_technique",):
-                q = q.filter(Log.mitre_technique == value)
-        else:
-            # Free text search in raw_log
-            q = q.filter(Log.raw_log.ilike(f"%{part}%"))
-    results = q.limit(200).all()
-    return [_fmt_log(l) for l in results]
+def _get_selected_logs(log_ids: list):
+    return get_log_store().get_logs_by_ids(log_ids)
 
 
-def _fmt_log(l):
+def _log_evidence(log: Log, query: str):
     return {
-        "id": l.id, "timestamp": str(l.timestamp), "source": l.source,
-        "source_ip": l.source_ip, "destination_ip": l.destination_ip,
-        "event_type": l.event_type, "event_id": l.event_id,
-        "severity": l.severity, "hostname": l.hostname, "username": l.username,
-        "process_name": l.process_name, "command_line": l.command_line,
-        "raw_log": l.raw_log, "mitre_tactic": l.mitre_tactic,
-        "mitre_technique": l.mitre_technique, "dns_query": l.dns_query,
-        "destination_port": l.destination_port, "is_malicious": l.is_malicious,
+        "id": f"log-{log.id}",
+        "title": f"Hunt log #{log.id}",
+        "type": "log",
+        "value": log.raw_log,
+        "description": f"Selected from hunt query: {query}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "metadata": {
+            "log_id": log.id,
+            "timestamp": str(log.timestamp),
+            "source": log.source,
+            "event_type": log.event_type,
+            "severity": log.severity,
+        },
     }
+
+
+def _json_list(value):
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    try:
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, json.JSONDecodeError):
+        return []

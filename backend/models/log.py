@@ -9,6 +9,7 @@ class Log(Base):
     __tablename__ = "logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), default="default", index=True)  # single-org self-host: "default"
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     source = Column(String(50), nullable=False, index=True)  # windows, linux, network, email, cloud
     source_ip = Column(String(45), nullable=True)

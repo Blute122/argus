@@ -11,3 +11,6 @@ pydantic-settings>=2.5.0
 aiosqlite>=0.20.0
 alembic>=1.13.0
 httpx>=0.27.0
+# Log store + relational backend (Phase 1 SIEM transformation)
+opensearch-py>=2.6.0
+psycopg2-binary>=2.9.9
