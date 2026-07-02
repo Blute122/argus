@@ -163,7 +163,7 @@ def _get_selected_logs(log_ids: list):
     return get_log_store().get_logs_by_ids(log_ids)
 
 
-def _log_evidence(log: Log, query: str):
+def _log_evidence(log, query: str):
     return {
         "id": f"log-{log.id}",
         "title": f"Hunt log #{log.id}",
