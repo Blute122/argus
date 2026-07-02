@@ -56,7 +56,7 @@ class SyslogListeners:
         self._tcp_server = await asyncio.start_server(
             handle_tcp, settings.syslog_host, settings.syslog_tcp_port
         )
-        print(f"[SOC] Syslog listening on {settings.syslog_host} "
+        print(f"[Argus] Syslog listening on {settings.syslog_host} "
               f"udp/{settings.syslog_udp_port} tcp/{settings.syslog_tcp_port}")
 
     async def stop(self):

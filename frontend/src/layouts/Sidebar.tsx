@@ -38,11 +38,11 @@ export default function Sidebar() {
       <div className="p-5 border-b border-[var(--border-color)]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-            SC
+            A
           </div>
           <div>
-            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">SOC COMMAND</h1>
-            <p className="text-[10px] text-[var(--accent-cyan)] font-mono tracking-widest">v1.0 SIMULATOR</p>
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">ARGUS</h1>
+            <p className="text-[10px] text-[var(--accent-cyan)] font-mono tracking-widest">SIEM v1.0</p>
           </div>
         </div>
       </div>

@@ -12,7 +12,7 @@ backend/venv/
 *.db
 *.sqlite
 *.sqlite3
-soc_simulator.db
+argus.db
 data/
 .jwt_secret
 

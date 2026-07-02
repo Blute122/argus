@@ -1,6 +1,6 @@
 """
-SOC Simulator - FastAPI Backend Entry Point.
-Starts the log generation engine, WebSocket server, and REST API.
+Argus - FastAPI Backend Entry Point.
+Starts ingestion, the detection engine, WebSocket server, and REST API.
 """
 import asyncio
 import random
@@ -113,16 +113,16 @@ async def lifespan(app: FastAPI):
     seed_database()
 
     if settings.jwt_secret_is_default():
-        print("[SOC] WARNING: JWT_SECRET is the built-in default. Set JWT_SECRET "
+        print("[Argus] WARNING: JWT_SECRET is the built-in default. Set JWT_SECRET "
               "in the environment before exposing this service.")
 
     if settings.opensearch_enabled:
         from backend.search.client import bootstrap_indices, ping
         if ping():
             bootstrap_indices()
-            print("[SOC] OpenSearch connected - log store ready")
+            print("[Argus] OpenSearch connected - log store ready")
         else:
-            print("[SOC] WARNING: OPENSEARCH_ENABLED but OpenSearch is unreachable")
+            print("[Argus] WARNING: OPENSEARCH_ENABLED but OpenSearch is unreachable")
 
     if settings.ingest_enabled:
         from backend.ingestion.bootstrap import ensure_default_ingest_key
@@ -147,9 +147,9 @@ async def lifespan(app: FastAPI):
     task = None
     if settings.demo_mode:
         task = asyncio.create_task(log_generation_loop())
-        print("[SOC] Backend started - demo log generation active")
+        print("[Argus] Backend started - demo log generation active")
     else:
-        print("[SOC] Backend started - DEMO_MODE off (awaiting real ingestion)")
+        print("[Argus] Backend started - DEMO_MODE off (awaiting real ingestion)")
 
     yield
 
@@ -162,13 +162,13 @@ async def lifespan(app: FastAPI):
         await syslog_listeners.stop()
     if file_tailer:
         await file_tailer.stop()
-    print("[SOC] Backend shutting down")
+    print("[Argus] Backend shutting down")
 
 
 # FastAPI application
 app = FastAPI(
-    title="SOC Simulator",
-    description="Security Operations Center Training Platform",
+    title="Argus",
+    description="Argus — a self-hostable SIEM (Security Operations Center platform)",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -245,7 +245,7 @@ async def ws_incidents(websocket: WebSocket):
 # Health check
 @app.get("/api/health")
 def health():
-    return {"status": "operational", "service": "SOC Simulator", "connections": manager.connection_count}
+    return {"status": "operational", "service": "Argus", "connections": manager.connection_count}
 
 
 # Dashboard stats endpoint

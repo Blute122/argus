@@ -31,7 +31,7 @@ class FileTailer:
             except OSError:
                 self._offsets[path] = 0
         self._task = asyncio.create_task(self._run(paths))
-        print(f"[SOC] File tailer following {len(paths)} path(s)")
+        print(f"[Argus] File tailer following {len(paths)} path(s)")
 
     async def _run(self, paths):
         source_type = settings.file_tail_source_type

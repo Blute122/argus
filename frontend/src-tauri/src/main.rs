@@ -1,3 +1,3 @@
 fn main() {
-    soc_simulator_lib::run()
+    argus_lib::run()
 }

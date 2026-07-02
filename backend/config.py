@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # --- Relational metadata store (users, incidents, alerts, assets, hunts) ---
     # SQLite by default so the app runs with zero infra; Postgres in Docker.
-    database_url: str = "sqlite:///./soc_simulator.db"
+    database_url: str = "sqlite:///./argus.db"
 
     # --- Log store (OpenSearch) ---
     # When disabled, logs fall back to the relational store (SQLite/Postgres),
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # --- Auth / security (Phase 4) ---
     # JWT signing secret. If left at the default, a random secret is generated
     # and persisted to data/.jwt_secret on first run (see get_settings).
-    jwt_secret: str = "soc-simulator-dev-secret-change-me"
+    jwt_secret: str = "argus-dev-secret-change-me"
     jwt_expire_minutes: int = 480
     # First-run admin password when DEMO_MODE is off. If empty, a random one is
     # generated and printed once. Demo mode keeps the sample training accounts.
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     ingest_rate_window_seconds: int = 60
 
     def jwt_secret_is_default(self) -> bool:
-        return self.jwt_secret == "soc-simulator-dev-secret-change-me"
+        return self.jwt_secret == "argus-dev-secret-change-me"
 
     # --- Log retention (OpenSearch ISM) ---
     # Delete indices older than this many days (0 disables the policy).
@@ -108,7 +108,7 @@ def _persistent_jwt_secret() -> str:
             os.chmod(path, 0o600)
         except OSError:
             pass
-        print(f"[SOC] Generated a persistent JWT secret at {path}")
+        print(f"[Argus] Generated a persistent JWT secret at {path}")
         return value
     except OSError:
         # Read-only FS: fall back to an ephemeral random secret (sessions won't

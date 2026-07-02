@@ -1,4 +1,4 @@
-# SOC Simulator → Real SIEM: Transformation Plan
+# SOC Simulator → Argus (Real SIEM): Transformation Plan
 
 **Status:** Phase 1 implemented. Phases 2–5 pending.
 **Author:** Engineering

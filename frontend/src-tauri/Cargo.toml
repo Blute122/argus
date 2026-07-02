@@ -1,12 +1,12 @@
 [package]
-name = "soc-simulator"
+name = "argus"
 version = "0.1.0"
-description = "Lab-scale SOC simulator desktop shell"
-authors = ["SOC Simulator"]
+description = "Argus SIEM desktop shell"
+authors = ["Argus"]
 edition = "2021"
 
 [lib]
-name = "soc_simulator_lib"
+name = "argus_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

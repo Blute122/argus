@@ -45,7 +45,7 @@ def verify(secret_b32: str, code: str, window: int = 1) -> bool:
     return False
 
 
-def provisioning_uri(secret_b32: str, account: str, issuer: str = "SOC Platform") -> str:
+def provisioning_uri(secret_b32: str, account: str, issuer: str = "Argus") -> str:
     """otpauth:// URI the frontend renders as a QR code."""
     label = quote(f"{issuer}:{account}")
     return (f"otpauth://totp/{label}?secret={secret_b32}"

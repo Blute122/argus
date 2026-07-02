@@ -83,7 +83,7 @@ def bootstrap_indices():
             )
         except Exception as exc:
             # Policy may already exist (needs seq_no to update) — non-fatal.
-            print(f"[SOC] ISM retention policy not (re)installed: {exc}")
+            print(f"[Argus] ISM retention policy not (re)installed: {exc}")
 
 
 def ping() -> bool:

@@ -21,7 +21,7 @@ def ensure_default_ingest_key() -> None:
                          key_prefix=prefix, key_hash=key_hash))
         db.commit()
         print("=" * 68)
-        print("[SOC] Created default ingest key (shown once — store it now):")
+        print("[Argus] Created default ingest key (shown once — store it now):")
         print(f"      {token}")
         print("      Use it as the X-Ingest-Key header for /api/ingest[/bulk].")
         print("=" * 68)

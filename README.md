@@ -1,9 +1,9 @@
-# SOC Platform
+# Argus
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/Blute122/soc/actions/workflows/ci.yml/badge.svg)](https://github.com/Blute122/soc/actions/workflows/ci.yml)
+[![CI](https://github.com/Blute122/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/Blute122/argus/actions/workflows/ci.yml)
 
-A self-hostable Security Operations Center / SIEM: live log stream, real log
+**Argus** is a self-hostable Security Operations Center / SIEM: live log stream, real log
 ingestion, Sigma-style detection rules, correlation-based alerting, threat
 hunting (SPL-like syntax), incident response workflow, asset inventory, MITRE
 ATT&CK mapping, and attack simulation.
@@ -134,7 +134,7 @@ environment / `.env`. See [.env.example](.env.example) for the full list.
 
 | Var | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./soc_simulator.db` | Relational metadata store |
+| `DATABASE_URL` | `sqlite:///./argus.db` | Relational metadata store |
 | `OPENSEARCH_ENABLED` | `false` | Use OpenSearch as the log store |
 | `OPENSEARCH_URL` / `_USER` / `_PASSWORD` | `https://localhost:9200` / `admin` | OpenSearch connection |
 | `DEMO_MODE` | `true` | Run the synthetic log generator |

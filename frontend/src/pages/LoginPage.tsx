@@ -55,10 +55,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 mb-4 shadow-lg shadow-cyan-500/20">
-            <span className="text-2xl font-bold text-white">SC</span>
+            <span className="text-2xl font-bold text-white">A</span>
           </div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-wide">SOC COMMAND CENTER</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1 font-mono">Security Operations Simulator v1.0</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-wide">ARGUS</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1 font-mono">Security Operations Center · SIEM v1.0</p>
         </div>
 
         {/* Login card */}

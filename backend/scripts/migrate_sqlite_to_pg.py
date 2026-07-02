@@ -7,7 +7,7 @@ SQLite logs into OpenSearch instead.
 
 Usage:
   python -m backend.scripts.migrate_sqlite_to_pg \
-      --source sqlite:///./soc_simulator.db \
+      --source sqlite:///./argus.db \
       --target postgresql+psycopg2://soc:soc@localhost:5432/soc
 
   # also push old logs into OpenSearch (requires OPENSEARCH_ENABLED=true):
@@ -69,7 +69,7 @@ def reindex_logs(source_url: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Migrate SOC metadata SQLite -> Postgres")
-    parser.add_argument("--source", default="sqlite:///./soc_simulator.db")
+    parser.add_argument("--source", default="sqlite:///./argus.db")
     parser.add_argument("--target", default="postgresql+psycopg2://soc:soc@localhost:5432/soc")
     parser.add_argument("--include-logs", action="store_true",
                         help="Also reindex SQLite logs into OpenSearch (needs OPENSEARCH_ENABLED=true).")
