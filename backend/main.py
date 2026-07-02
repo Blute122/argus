@@ -20,7 +20,7 @@ from backend.log_generators.linux import generate_linux_log
 from backend.log_generators.network import generate_network_log
 from backend.log_generators.email_gen import generate_email_log
 from backend.log_generators.cloud import generate_cloud_log
-from backend.api import auth, alerts, incidents, logs, simulations, mitre, assets, reports, rules
+from backend.api import auth, alerts, incidents, logs, simulations, mitre, assets, reports, rules, audit as audit_api
 from backend.detection.engine import detection_engine
 from backend.detection.scheduler import scheduler as detection_scheduler
 from backend.ingestion import http_ingest
@@ -112,6 +112,10 @@ async def lifespan(app: FastAPI):
     init_db()
     seed_database()
 
+    if settings.jwt_secret_is_default():
+        print("[SOC] WARNING: JWT_SECRET is the built-in default. Set JWT_SECRET "
+              "in the environment before exposing this service.")
+
     if settings.opensearch_enabled:
         from backend.search.client import bootstrap_indices, ping
         if ping():
@@ -170,10 +174,14 @@ app = FastAPI(
 )
 
 # CORS for frontend
+# Wildcard origins and credentialed requests are mutually exclusive per the CORS
+# spec; only allow credentials when specific origins are configured.
+_cors_origins = settings.cors_origin_list()
+_allow_credentials = _cors_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list(),
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -188,6 +196,7 @@ app.include_router(mitre.router)
 app.include_router(assets.router)
 app.include_router(reports.router)
 app.include_router(rules.router)
+app.include_router(audit_api.router)
 if settings.ingest_enabled:
     app.include_router(http_ingest.router)
 

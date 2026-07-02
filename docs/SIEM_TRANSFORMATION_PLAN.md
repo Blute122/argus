@@ -197,7 +197,10 @@ Each phase lists: goal · new/changed files · migration steps · how to verify 
 
 ---
 
-### Phase 4 — Production hardening (self-host profile)
+### Phase 4 — Production hardening (self-host profile) — ✅ IMPLEMENTED
+
+> Delivered: **RBAC enforcement** (admin-only `register`/`list_users` — closes a self-register-as-admin privilege-escalation hole; incident status → responder tier; asset create/update/vuln → responder tier). **Audit log** (`models/audit_log.py`, `backend/audit.py` helper, admin `api/audit.py`) recording login success/failure, MFA changes, rule enable/disable, incident/asset status changes, user + ingest-key creation. **JWT secret from config** (`settings.jwt_secret`, startup warning on default). **CORS** no longer sends credentials with `*` origins. **Rate limiting** (`backend/ratelimit.py`, dependency-free) on login + ingest. **MFA/TOTP** (`backend/mfa.py`, stdlib RFC 6238 — no pyotp/qrcode dep) with enroll/activate/disable endpoints and login enforcement. **ISM retention** policy installed on the OpenSearch path (`log_retention_days`). Frontend `SecurityPage.tsx` (MFA enrollment + admin audit viewer). Verified end-to-end via TestClient (RBAC 403s, admin-only register, MFA-enforced login, audit trail, rate limiter); frontend typechecks.
+> **Deferred (deliberately):** OIDC/SSO — build on demand when an org needs IdP federation (see the auth-scope decision). MFA QR image uses manual secret entry rather than bundling a QR library.
 
 **Goal:** Not a toy. Real access control, auditability, deployability — scoped for a *self-hosted single-org* operator, not a SaaS. That means: secure-by-default config, no secrets in the repo, HTTPS guidance, RBAC enforcement, audit log, and optional MFA/SSO — but **no** multi-tenant isolation, billing, metering, or SOC 2 program (those belong to a SaaS model, deliberately out of scope; see Appendix A).
 

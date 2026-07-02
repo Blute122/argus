@@ -1,11 +1,12 @@
 """Incidents API endpoints for IR workflow."""
 import json
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from pydantic import BaseModel
 from typing import Optional
+from backend import audit
 from backend.database.connection import get_db
 from backend.models.alert import Alert
 from backend.models.asset import Asset
@@ -15,6 +16,9 @@ from backend.models.user import User
 from backend.api.auth import get_current_user
 from backend.utils.threat_intel import analyze_ip
 from backend.api.auth import require_roles
+
+# Roles allowed to change incident state (admin bypasses via require_roles).
+_IR_ROLES = ["analyst_l2", "analyst_l3", "incident_responder"]
 
 router = APIRouter(prefix="/api/incidents", tags=["Incidents"])
 
@@ -94,7 +98,8 @@ def create_incident(data: IncidentCreate, db: Session = Depends(get_db), user: U
 
 
 @router.patch("/{incident_id}/status")
-def update_status(incident_id: int, status: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_status(incident_id: int, status: str, request: Request,
+                  db: Session = Depends(get_db), user: User = Depends(require_roles(_IR_ROLES))):
     incident = db.query(Incident).filter(Incident.id == incident_id).first()
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -110,6 +115,8 @@ def update_status(incident_id: int, status: str, db: Session = Depends(get_db), 
         content=f"Status changed to {status}",
     ))
     db.commit()
+    audit.record("incident.status_change", actor=user, target_type="incident",
+                 target_id=incident_id, detail=f"status={status}", request=request, db=db)
     return _format_incident(incident)
 
 

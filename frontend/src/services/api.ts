@@ -84,6 +84,14 @@ export const register = (data: any) => api.post('/auth/register', data);
 export const getMe = () => api.get('/auth/me');
 export const getUsers = () => api.get('/auth/users');
 
+// MFA
+export const enrollMfa = () => api.post('/auth/mfa/enroll');
+export const activateMfa = (code: string) => api.post('/auth/mfa/activate', { code });
+export const disableMfa = (code: string) => api.post('/auth/mfa/disable', { code });
+
+// Audit (admin)
+export const getAuditLog = (params?: any) => api.get('/audit', { params });
+
 // Dashboard
 export const getDashboardStats = () => api.get('/dashboard/stats');
 

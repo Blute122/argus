@@ -1,13 +1,13 @@
 """Asset inventory API endpoints."""
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from backend.api.auth import get_current_user
+from backend import audit
 from backend.database.connection import get_db
 from backend.models.alert import Alert
 from backend.models.asset import Asset
@@ -16,6 +16,9 @@ from backend.models.log import Log
 from backend.api.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/api/assets", tags=["Assets"])
+
+# Asset inventory changes require containment authority.
+_ASSET_ADMIN = ["incident_responder", "admin"]
 
 
 class AssetCreate(BaseModel):
@@ -71,7 +74,7 @@ def list_assets(
 
 
 @router.post("/")
-def create_asset(data: AssetCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_asset(data: AssetCreate, db: Session = Depends(get_db), _user=Depends(require_roles(_ASSET_ADMIN))):
     if db.query(Asset).filter((Asset.hostname == data.hostname) | (Asset.ip_address == data.ip_address)).first():
         raise HTTPException(status_code=400, detail="Asset hostname or IP already exists")
     asset = Asset(**data.model_dump(), last_seen=datetime.now(timezone.utc))
@@ -82,19 +85,24 @@ def create_asset(data: AssetCreate, db: Session = Depends(get_db), _user=Depends
 
 
 @router.patch("/{asset_id}")
-def update_asset(asset_id: int, data: AssetUpdate, db: Session = Depends(get_db), _user=Depends(require_roles(['incident_responder', 'admin']))):
+def update_asset(asset_id: int, data: AssetUpdate, request: Request, db: Session = Depends(get_db),
+                 user=Depends(require_roles(_ASSET_ADMIN))):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    for key, value in changes.items():
         setattr(asset, key, value)
     db.commit()
     db.refresh(asset)
+    if "status" in changes:
+        audit.record("asset.status_change", actor=user, target_type="asset", target_id=asset_id,
+                     detail=f"status={changes['status']}", request=request, db=db)
     return _format_asset(asset, db)
 
 
 @router.post("/{asset_id}/vulnerabilities")
-def add_vulnerability(asset_id: int, data: VulnerabilityCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def add_vulnerability(asset_id: int, data: VulnerabilityCreate, db: Session = Depends(get_db), _user=Depends(require_roles(_ASSET_ADMIN))):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")

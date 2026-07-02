@@ -13,13 +13,18 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from backend import audit
 from backend.api.auth import require_roles
+from backend.config import settings
 from backend.database.connection import get_db
 from backend.ingestion.parsers import parse as parse_raw
 from backend.ingestion.pipeline import ingest_event
 from backend.models.ingest_key import IngestKey, generate_key, hash_key
+from backend.ratelimit import rate_limiter
 
 router = APIRouter(prefix="/api/ingest", tags=["Ingestion"])
+
+_ingest_rate = rate_limiter("ingest", settings.ingest_rate_limit, settings.ingest_rate_window_seconds)
 
 
 def require_ingest_key(
@@ -52,6 +57,7 @@ async def ingest_single(
     request: Request,
     source_type: str = "auto",
     tenant_id: str = Depends(require_ingest_key),
+    _rl=Depends(_ingest_rate),
 ):
     body = await request.body()
     raw = body.decode("utf-8", errors="replace").strip()
@@ -68,6 +74,7 @@ async def ingest_bulk(
     request: Request,
     source_type: str = "auto",
     tenant_id: str = Depends(require_ingest_key),
+    _rl=Depends(_ingest_rate),
 ):
     body = await request.body()
     text = body.decode("utf-8", errors="replace")
@@ -94,14 +101,17 @@ class IngestKeyCreate(BaseModel):
 @router.post("/keys")
 def create_ingest_key(
     data: IngestKeyCreate,
+    request: Request,
     db: Session = Depends(get_db),
-    _admin=Depends(require_roles(["admin"])),
+    admin=Depends(require_roles(["admin"])),
 ):
     token, prefix, key_hash = generate_key()
     key = IngestKey(name=data.name, tenant_id=data.tenant_id, key_prefix=prefix, key_hash=key_hash)
     db.add(key)
     db.commit()
     db.refresh(key)
+    audit.record("ingest_key.create", actor=admin, target_type="ingest_key", target_id=key.id,
+                 detail=f"name={data.name}", request=request, db=db)
     # Plaintext token is returned exactly once.
     return {"id": key.id, "name": key.name, "tenant_id": key.tenant_id, "token": token,
             "note": "Store this token now; it cannot be retrieved again."}

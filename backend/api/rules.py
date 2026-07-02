@@ -2,9 +2,10 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from backend import audit
 from backend.api.auth import get_current_user, require_roles
 from backend.database.connection import get_db
 from backend.detection.engine import detection_engine
@@ -55,16 +56,18 @@ def get_rule(rule_id: str, db: Session = Depends(get_db), _user=Depends(get_curr
 
 
 @router.post("/rules/{rule_id}/enable")
-def enable_rule(rule_id: str, _user=Depends(_MANAGE)):
+def enable_rule(rule_id: str, request: Request, user=Depends(_MANAGE)):
     if not detection_engine.set_enabled(rule_id, True):
         raise HTTPException(status_code=404, detail="Rule not found")
+    audit.record("rule.enable", actor=user, target_type="rule", target_id=rule_id, request=request)
     return {"id": rule_id, "enabled": True}
 
 
 @router.post("/rules/{rule_id}/disable")
-def disable_rule(rule_id: str, _user=Depends(_MANAGE)):
+def disable_rule(rule_id: str, request: Request, user=Depends(_MANAGE)):
     if not detection_engine.set_enabled(rule_id, False):
         raise HTTPException(status_code=404, detail="Rule not found")
+    audit.record("rule.disable", actor=user, target_type="rule", target_id=rule_id, request=request)
     return {"id": rule_id, "enabled": False}
 
 

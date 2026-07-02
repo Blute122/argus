@@ -49,10 +49,41 @@ def read_index_pattern() -> str:
     return f"{settings.opensearch_index_prefix}-*"
 
 
+_ISM_POLICY_ID = "logs-retention"
+
+
+def _retention_policy(days: int) -> dict:
+    return {
+        "policy": {
+            "description": f"Delete SOC log indices older than {days} days",
+            "default_state": "hot",
+            "states": [
+                {
+                    "name": "hot",
+                    "actions": [],
+                    "transitions": [{"state_name": "delete", "conditions": {"min_index_age": f"{days}d"}}],
+                },
+                {"name": "delete", "actions": [{"delete": {}}], "transitions": []},
+            ],
+            "ism_template": [{"index_patterns": [read_index_pattern()], "priority": 100}],
+        }
+    }
+
+
 def bootstrap_indices():
-    """Install the index template. Safe to call on every startup (idempotent)."""
+    """Install the index template (+ retention policy). Idempotent."""
     client = get_client()
     client.indices.put_index_template(name="logs-template", body=INDEX_TEMPLATE)
+
+    days = settings.log_retention_days
+    if days and days > 0:
+        try:
+            client.transport.perform_request(
+                "PUT", f"/_plugins/_ism/policies/{_ISM_POLICY_ID}", body=_retention_policy(days),
+            )
+        except Exception as exc:
+            # Policy may already exist (needs seq_no to update) — non-fatal.
+            print(f"[SOC] ISM retention policy not (re)installed: {exc}")
 
 
 def ping() -> bool:

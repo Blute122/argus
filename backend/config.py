@@ -61,6 +61,24 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    # --- Auth / security (Phase 4) ---
+    # JWT signing secret. MUST be overridden in any non-local deployment.
+    jwt_secret: str = "soc-simulator-dev-secret-change-me"
+    jwt_expire_minutes: int = 480
+    # Login rate limit (attempts per IP per window).
+    login_rate_limit: int = 10
+    login_rate_window_seconds: int = 60
+    # Ingest rate limit (requests per key/IP per window; 0 disables).
+    ingest_rate_limit: int = 0
+    ingest_rate_window_seconds: int = 60
+
+    def jwt_secret_is_default(self) -> bool:
+        return self.jwt_secret == "soc-simulator-dev-secret-change-me"
+
+    # --- Log retention (OpenSearch ISM) ---
+    # Delete indices older than this many days (0 disables the policy).
+    log_retention_days: int = 90
+
 
 @lru_cache
 def get_settings() -> Settings:
